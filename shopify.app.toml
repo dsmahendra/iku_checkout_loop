@@ -3,7 +3,7 @@
 # Client ID of the "IKU checkout with loop" app (Dev Dashboard > app > Overview > Credentials)
 client_id = "0f9fffc75a1745ccbf491a327f0536da"
 name = "IKU checkout with loop"
-application_url = "https://example.com"
+application_url = "https://shopify.dev/apps/default-app-home"
 embedded = true
 
 [access_scopes]
@@ -46,7 +46,7 @@ api_version = "2026-07"
   topics = [ "app/scopes_update" ]
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
 
 [build]
 include_config_on_deploy = true
