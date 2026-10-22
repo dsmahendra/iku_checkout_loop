@@ -93,12 +93,14 @@ function useEligibleUpgradeLines(cartLines: CartLine[]) {
   const { query } = useApi();
   const [result, setResult] = useState<{ variantIds: string[]; plans: EligibleSellingPlan[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const candidateKey = cartLines.map((line) => line.merchandise.id).join(",");
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
 
     async function findEligibleLines() {
       const eligibleVariantIds: string[] = [];
@@ -121,8 +123,10 @@ function useEligibleUpgradeLines(cartLines: CartLine[]) {
             if (!sharedPlans) sharedPlans = plans;
           }
         }
-      } catch {
-        // Leave both empty — falls through to the non-live/fallback state below.
+      } catch (err) {
+        // Leave both empty — falls through to the non-live/fallback state below, with the
+        // reason shown in the preview line so a failed query isn't mistaken for "no plans".
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       }
 
       if (cancelled) return;
@@ -138,7 +142,7 @@ function useEligibleUpgradeLines(cartLines: CartLine[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidateKey, query]);
 
-  return { result, loading };
+  return { result, loading, error };
 }
 
 function UpgradeBanner() {
@@ -147,7 +151,7 @@ function UpgradeBanner() {
   const shippingAddress = useShippingAddress();
   const cartLines = useCartLines();
   const applyCartLinesChange = useApplyCartLinesChange();
-  const { result, loading } = useEligibleUpgradeLines(cartLines);
+  const { result, loading, error: loadError } = useEligibleUpgradeLines(cartLines);
 
   // Holds the buyer on the current step (disabling e.g. "Pay now") while we're still
   // checking eligibility or applying the default plan, so they can't complete checkout
@@ -293,7 +297,9 @@ function UpgradeBanner() {
         <>
           {!isLive && (
             <s-text type="small" color="subdued">
-              Preview — no eligible subscription product found in this cart yet.
+              {loadError
+                ? `Preview — couldn't load subscription plans: ${loadError}`
+                : "Preview — no eligible subscription product found in this cart yet."}
             </s-text>
           )}
 
