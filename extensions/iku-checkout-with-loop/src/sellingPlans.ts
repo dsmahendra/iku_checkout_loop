@@ -122,30 +122,40 @@ function formatDiscount(
 }
 
 function mapAllocationsToPlans(edges: SellingPlanEdge[]): EligibleSellingPlan[] {
-  return edges
+  // Loop doesn't write the custom.* metafields on this store, so every plan Loop attached to
+  // the variant is shown. A plan is only hidden when the metafield explicitly says "false".
+  // Shopify returns allocations in Loop's configured order; the position metafield, when set,
+  // overrides it (stable sort keeps Loop's order for plans without one).
+  const plans = edges
     .map(({ node }) => node.sellingPlan)
-    .filter((plan) => plan.isSppAvailableOnCheckout?.value === "true")
+    .filter((plan) => plan.isSppAvailableOnCheckout?.value !== "false")
     .sort((a, b) => {
       const positionA = Number(a.sellingPlanGroupPosition?.value ?? 0);
       const positionB = Number(b.sellingPlanGroupPosition?.value ?? 0);
       return positionA - positionB;
-    })
-    .map((plan): EligibleSellingPlan => {
-      // Per Loop support: this metafield holds the *id* of the default selling plan
-      // (not a per-plan boolean) — Loop's admin displays it as the bare numeric id
-      // (e.g. "8023310379"), while `plan.id` is the full GID, so compare both forms.
-      const defaultPlanIdValue = plan.isDefaultSellingPlan?.value;
-      const numericId = plan.id.split("/").pop();
-      return {
-        id: plan.id,
-        label: plan.billingPolicy
-          ? formatFrequency(plan.billingPolicy.interval, plan.billingPolicy.intervalCount)
-          : plan.id,
-        isDefault: defaultPlanIdValue === plan.id || defaultPlanIdValue === numericId,
-        discountLabel: formatDiscount(plan.priceAdjustments ?? []),
-        shippingLabel: plan.shippingLabel?.value || null,
-      };
     });
+
+  // Per Loop support: this metafield holds the *id* of the default selling plan
+  // (not a per-plan boolean) — Loop's admin displays it as the bare numeric id
+  // (e.g. "8023310379"), while `plan.id` is the full GID, so compare both forms.
+  // Without it, the first plan (Loop's "Default" frequency) is the default.
+  const isMarkedDefault = (plan: SellingPlanEdge["node"]["sellingPlan"]) => {
+    const defaultPlanIdValue = plan.isDefaultSellingPlan?.value;
+    return defaultPlanIdValue === plan.id || defaultPlanIdValue === plan.id.split("/").pop();
+  };
+  const defaultPlanId = (plans.find(isMarkedDefault) ?? plans[0])?.id;
+
+  return plans.map(
+    (plan): EligibleSellingPlan => ({
+      id: plan.id,
+      label: plan.billingPolicy
+        ? formatFrequency(plan.billingPolicy.interval, plan.billingPolicy.intervalCount)
+        : plan.id,
+      isDefault: plan.id === defaultPlanId,
+      discountLabel: formatDiscount(plan.priceAdjustments ?? []),
+      shippingLabel: plan.shippingLabel?.value || null,
+    }),
+  );
 }
 
 // Implements steps 1 & 2 of Loop's upgrade-to-subscription-block guide: fetch every cart

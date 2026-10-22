@@ -8,6 +8,7 @@ api_version = "2026-07"
 [[extensions]]
 name = "IKU checkout with loop"
 handle = "iku-checkout-with-loop"
+uid = "51246297-87b7-202b-51e3-c51417d8e3a6d43046e1"
 type = "ui_extension"
 
   [[extensions.targeting]]
