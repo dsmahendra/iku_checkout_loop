@@ -29,6 +29,9 @@ import type { CartLine } from "@shopify/ui-extensions/checkout";
 
 const ONE_TIME_PURCHASE = "one-time-purchase";
 
+// Longest the eligibility check may hold the buyer on the current step before giving up.
+const PLAN_LOOKUP_TIMEOUT_MS = 6000;
+
 // Fixed card height, so all options are the same box regardless of how much text each one
 // carries. Roomy enough for a wrapped two-line label plus a detail line.
 const CARD_MIN_BLOCK_SIZE = "90px";
@@ -110,10 +113,18 @@ function useEligibleUpgradeLines(cartLines: CartLine[]) {
         // One batched request for every cart line's variant, instead of one request per
         // line awaited in series — this is what actually cuts checkout load time, since a
         // multi-item cart previously paid N sequential round-trips before the widget settled.
-        const plansByVariantId = await fetchEligibleSellingPlansForVariants(
-          query,
-          cartLines.map((line) => line.merchandise.id),
-        );
+        // Capped so a hung request can't leave "Pay now" blocked by the intercept below
+        // indefinitely — on timeout the widget falls back to its preview state and checkout
+        // proceeds as a normal one-time purchase.
+        const plansByVariantId = await Promise.race([
+          fetchEligibleSellingPlansForVariants(
+            query,
+            cartLines.map((line) => line.merchandise.id),
+          ),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("timed out")), PLAN_LOOKUP_TIMEOUT_MS),
+          ),
+        ]);
         if (cancelled) return;
 
         for (const line of cartLines) {
