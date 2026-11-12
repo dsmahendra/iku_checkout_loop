@@ -32,9 +32,9 @@ const ONE_TIME_PURCHASE = "one-time-purchase";
 // Longest the eligibility check may hold the buyer on the current step before giving up.
 const PLAN_LOOKUP_TIMEOUT_MS = 6000;
 
-// Fixed card height, so all options are the same box regardless of how much text each one
-// carries. Roomy enough for a wrapped two-line label plus a detail line.
-const CARD_MIN_BLOCK_SIZE = "90px";
+// Shared minimum card height, so all options are the same box regardless of how much text
+// each one carries. Sized for the compact two-line block used by the HDS delivery picker.
+const CARD_MIN_BLOCK_SIZE = "56px";
 
 // Shown when no live eligible plan data is available yet (still loading, no eligible
 // cart line found, or the query failed) so the banner is never fully invisible while
@@ -322,7 +322,7 @@ function UpgradeBanner() {
             </s-text>
             <s-grid
               gridTemplateColumns={`repeat(${cards.length}, 1fr)`}
-              gap="small"
+              gap="small-200"
               alignItems="end"
               inlineSize="100%"
             >
@@ -388,17 +388,18 @@ function PlanCard({
         onClick={onPress}
         accessibilityLabel={badge ? `${label} — ${badge}` : label}
       >
+        {/* Same two-line block as the IKU HDS delivery date/time picker: bold label on
+            top, smaller detail lines underneath, no extra inner gap or padding. */}
         <s-stack
           direction="block"
-          gap="small-200"
-          padding="small-200"
+          gap="none"
           minBlockSize={CARD_MIN_BLOCK_SIZE}
           justifyContent="center"
           alignItems="center"
           inlineSize="100%"
         >
           <s-text type="strong">{label}</s-text>
-          {shippingLabel && <s-text type="strong">{shippingLabel}</s-text>}
+          {shippingLabel && <s-text type="small">{shippingLabel}</s-text>}
           {discountLabel && <s-text type="small">{discountLabel}</s-text>}
         </s-stack>
       </s-button>
